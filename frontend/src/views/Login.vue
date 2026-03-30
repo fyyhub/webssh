@@ -35,22 +35,40 @@
                  <el-row :gutter="20">
            <el-col :xs="24" :sm="12">
              <el-form-item label="私钥 (Private Key)">
-               <el-upload
-                 class="upload-key"
-                 :show-file-list="false"
-                 :before-upload="handlePrivateKeyUpload"
-                 accept=".pem,.ppk,.key,.rsa,.id_rsa,.id_dsa,.txt"
-               >
-                 <div class="upload-flex-row">
-                   <div class="upload-btn">
-                     <i class="el-icon-folder-opened" style="margin-right:8px;"></i>
-                     上传密钥
+               <el-radio-group v-if="s3Enabled" v-model="keySource" size="small" style="margin-bottom: 8px;">
+                 <el-radio-button label="upload">上传文件</el-radio-button>
+                 <el-radio-button label="s3">S3 选择</el-radio-button>
+               </el-radio-group>
+               <template v-if="keySource === 'upload'">
+                 <el-upload
+                   class="upload-key"
+                   :show-file-list="false"
+                   :before-upload="handlePrivateKeyUpload"
+                   accept=".pem,.ppk,.key,.rsa,.id_rsa,.id_dsa,.txt"
+                 >
+                   <div class="upload-flex-row">
+                     <div class="upload-btn">
+                       <i class="el-icon-folder-opened" style="margin-right:8px;"></i>
+                       上传密钥
+                     </div>
+                     <div class="upload-filename" style="width: 12rem">
+                       {{ privateKeyFileName || '未上传密钥文件' }}
+                     </div>
+                   </div>
+                 </el-upload>
+               </template>
+               <template v-else>
+                 <div class="upload-flex-row" style="height: 48px;">
+                   <div class="upload-btn" @click="s3BrowserVisible = true" style="cursor: pointer;">
+                     <i class="el-icon-search" style="margin-right:8px;"></i>
+                     浏览 S3
                    </div>
                    <div class="upload-filename" style="width: 12rem">
-                     {{ privateKeyFileName || '未上传密钥文件' }}
+                     {{ s3KeyPath || '未选择 S3 密钥' }}
                    </div>
                  </div>
-               </el-upload>
+                 <S3KeyBrowser :visible.sync="s3BrowserVisible" @select="onS3KeySelect" />
+               </template>
              </el-form-item>
            </el-col>
            <el-col :xs="24" :sm="12">
@@ -89,7 +107,11 @@
 </template>
 
 <script>
+import { getS3Config } from '@/api/s3'
+import S3KeyBrowser from '@/components/S3KeyBrowser.vue'
+
 export default {
+  components: { S3KeyBrowser },
   data () {
     return {
       sshInfo: {
@@ -103,7 +125,11 @@ export default {
       },
       privateKeyFileName: '',
       generatedLink: '',
-      isDarkTheme: false
+      isDarkTheme: false,
+      s3Enabled: false,
+      s3BrowserVisible: false,
+      s3KeyPath: '',
+      keySource: 'upload'
     }
   },
   watch: {
@@ -115,6 +141,13 @@ export default {
     }
   },
   created() {
+    // 检查 S3 是否可用
+    getS3Config().then(res => {
+      if (res && res.enabled) {
+        this.s3Enabled = true
+      }
+    }).catch(() => {})
+
     // 从 localStorage 恢复完整的连接信息
     const savedInfo = localStorage.getItem('connectionInfo')
     if (savedInfo) {
@@ -165,7 +198,7 @@ export default {
         })
         return
       }
-      if (!this.sshInfo.password && !this.sshInfo.privateKey) {
+      if (!this.sshInfo.password && !this.sshInfo.privateKey && !this.s3KeyPath) {
         this.$message.error('请输入密码或上传密钥！')
         this.$nextTick(() => {
           this.$refs.passwordInput && this.$refs.passwordInput.focus()
@@ -174,13 +207,18 @@ export default {
       }
 
       // 根据实际使用的登录方式清理未使用的认证信息
-      if (this.sshInfo.privateKey && this.sshInfo.privateKey.trim()) {
+      if (this.keySource === 's3' && this.s3KeyPath) {
         this.sshInfo.password = ''
+        this.sshInfo.privateKey = ''
+      } else if (this.sshInfo.privateKey && this.sshInfo.privateKey.trim()) {
+        this.sshInfo.password = ''
+        this.s3KeyPath = ''
       } else if (this.sshInfo.password) {
         // 使用密码登录时，清除密钥相关信息
         this.sshInfo.privateKey = ''
         this.sshInfo.passphrase = ''
         this.privateKeyFileName = ''
+        this.s3KeyPath = ''
       }
 
       // 保存完整连接信息到 localStorage
@@ -204,7 +242,15 @@ export default {
       }
 
       // 根据登录方式设置认证信息
-      if (this.sshInfo.privateKey && this.sshInfo.privateKey.trim()) {
+      if (this.keySource === 's3' && this.s3KeyPath) {
+        // S3 密钥登录
+        const s3Info = {
+          ...this.sshInfo,
+          s3KeyPath: this.s3KeyPath
+        }
+        sessionStorage.setItem('sshInfo', JSON.stringify(s3Info))
+        query.useS3Key = 1
+      } else if (this.sshInfo.privateKey && this.sshInfo.privateKey.trim()) {
         // 使用密钥登录
         sessionStorage.setItem('sshInfo', JSON.stringify(this.sshInfo))
         query.useKey = 1
@@ -219,17 +265,19 @@ export default {
     },
     onReset () {
       // 清除表单数据
-      this.sshInfo = { 
-        hostname: '', 
-        port: '', 
-        username: '', 
-        password: '', 
-        command: '', 
-        privateKey: '', 
-        passphrase: '' 
+      this.sshInfo = {
+        hostname: '',
+        port: '',
+        username: '',
+        password: '',
+        command: '',
+        privateKey: '',
+        passphrase: ''
       }
       this.privateKeyFileName = ''
       this.generatedLink = ''
+      this.s3KeyPath = ''
+      this.keySource = 'upload'
 
       // 清除所有存储的认证信息
       localStorage.removeItem('connectionInfo')
@@ -242,7 +290,7 @@ export default {
       }
     },
     onGenerateLink () {
-      if (this.sshInfo.privateKey) {
+      if (this.sshInfo.privateKey || this.s3KeyPath) {
         this.$message.warning('密钥方式登录不支持生成快捷链接，请改用密码登录方式')
         return
       }
@@ -299,7 +347,8 @@ export default {
     handlePrivateKeyUpload(file) {
       // 上传密钥时清除密码，确保使用密钥登录
       this.sshInfo.password = ''
-      
+      this.s3KeyPath = ''
+
       const reader = new FileReader()
       reader.onload = (e) => {
         this.sshInfo.privateKey = e.target.result
@@ -307,6 +356,13 @@ export default {
       }
       reader.readAsText(file)
       return false // 阻止自动上传
+    },
+    onS3KeySelect(path) {
+      this.s3KeyPath = path
+      // 清除上传的密钥和密码
+      this.sshInfo.privateKey = ''
+      this.sshInfo.password = ''
+      this.privateKeyFileName = ''
     }
   }
 }

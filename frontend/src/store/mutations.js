@@ -25,6 +25,9 @@ export default {
         if (ssh.passphrase !== undefined) {
             state.sshInfo.passphrase = ssh.passphrase
         }
+        if (ssh.s3KeyPath !== undefined) {
+            state.sshInfo.s3KeyPath = ssh.s3KeyPath
+        }
     },
     SET_TAB(state, tab) {
         state.currentTab = tab

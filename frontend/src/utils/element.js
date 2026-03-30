@@ -21,7 +21,10 @@ import {
     Tabs,
     TabPane,
     Divider,
-    Tooltip
+    Tooltip,
+    Tree,
+    RadioGroup,
+    RadioButton
 } from 'element-ui'
 const element = {
     install: function (Vue) {
@@ -46,6 +49,9 @@ const element = {
         Vue.use(TabPane)
         Vue.use(Divider)
         Vue.use(Tooltip)
+        Vue.use(Tree)
+        Vue.use(RadioGroup)
+        Vue.use(RadioButton)
         Vue.prototype.$message = Message
     }
 }

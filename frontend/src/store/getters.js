@@ -1,15 +1,24 @@
 export default {
     sshReq: state => {
+        let logintype = 0;
+        if (state.sshInfo.s3KeyPath && state.sshInfo.s3KeyPath.trim()) {
+            logintype = 2;
+        } else if (state.sshInfo.privateKey && state.sshInfo.privateKey.trim()) {
+            logintype = 1;
+        }
+
         const sshInfo = {
             hostname: state.sshInfo.hostname,
             port: Number(state.sshInfo.port),
             username: state.sshInfo.username,
-            logintype: state.sshInfo.privateKey && state.sshInfo.privateKey.trim() ? 1 : 0 // 只有当privateKey存在且不为空时才使用密钥登录
+            logintype: logintype
         };
         if (state.sshInfo.password) {
             sshInfo.password = state.sshInfo.password;
         }
-        if (state.sshInfo.privateKey && state.sshInfo.privateKey.trim()) {
+        if (logintype === 2) {
+            sshInfo.s3KeyPath = state.sshInfo.s3KeyPath;
+        } else if (logintype === 1) {
             sshInfo.privateKey = state.sshInfo.privateKey;
         }
         if (state.sshInfo.passphrase) {

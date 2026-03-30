@@ -6,7 +6,8 @@ const state = () => ({
         username: '',
         port: '',
         password: '',
-        command: ''
+        command: '',
+        s3KeyPath: ''
     },
     sshList: Object.prototype.hasOwnProperty.call(localStorage, 'sshList') ? localStorage.getItem('sshList') : null,
     termList: [],

@@ -8,7 +8,7 @@ import Terminal from '@/components/Terminal.vue'
 export default {
   components: { Terminal },
   beforeCreate() {
-    let { hostname, port, username, password, command, privateKey, passphrase, useKey } = this.$route.query;
+    let { hostname, port, username, password, command, privateKey, passphrase, useKey, useS3Key } = this.$route.query;
     // 解码
     if (hostname) hostname = decodeURIComponent(hostname);
     if (username) username = decodeURIComponent(username);
@@ -23,8 +23,23 @@ export default {
     if (privateKey) privateKey = decodeURIComponent(privateKey);
     if (passphrase) passphrase = decodeURIComponent(passphrase);
 
-    // 如果是密钥登录，从 sessionStorage 读取完整 sshInfo
-    if (useKey) {
+    let s3KeyPath = '';
+
+    // 如果是 S3 密钥登录，从 sessionStorage 读取完整 sshInfo
+    if (useS3Key) {
+      const savedInfo = sessionStorage.getItem('sshInfo');
+      if (savedInfo) {
+        const info = JSON.parse(savedInfo);
+        hostname = info.hostname;
+        port = info.port;
+        username = info.username;
+        password = info.password;
+        command = info.command;
+        passphrase = info.passphrase;
+        s3KeyPath = info.s3KeyPath || '';
+      }
+    } else if (useKey) {
+      // 如果是密钥登录，从 sessionStorage 读取完整 sshInfo
       const savedInfo = sessionStorage.getItem('sshInfo');
       if (savedInfo) {
         const info = JSON.parse(savedInfo);
@@ -51,7 +66,7 @@ export default {
       }
     }
 
-    if (hostname && username && (password || privateKey)) {
+    if (hostname && username && (password || privateKey || s3KeyPath)) {
       this.$store.commit('SET_SSH', {
         hostname,
         port: Number(port) || 22,
@@ -59,7 +74,8 @@ export default {
         password,
         command,
         privateKey,
-        passphrase
+        passphrase,
+        s3KeyPath
       });
     }
   }

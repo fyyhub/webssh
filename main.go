@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"webssh/controller"
+	"webssh/core"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,15 @@ var (
 	gitVersion string
 	username   string
 	password   string
+
+	// S3 configuration
+	s3Endpoint  string
+	s3Region    string
+	s3Bucket    string
+	s3AccessKey string
+	s3SecretKey string
+	s3Prefix    string
+	s3Enabled   bool
 )
 
 func init() {
@@ -65,9 +75,37 @@ func init() {
 		}
 		username, password = accountInfo[0], accountInfo[1]
 	}
+
+	// S3 environment variables
+	s3Endpoint = os.Getenv("S3_ENDPOINT")
+	s3Region = os.Getenv("S3_REGION")
+	s3Bucket = os.Getenv("S3_BUCKET")
+	s3AccessKey = os.Getenv("S3_ACCESS_KEY")
+	s3SecretKey = os.Getenv("S3_SECRET_KEY")
+	s3Prefix = os.Getenv("S3_PREFIX")
+	if s3Endpoint != "" && s3Bucket != "" && s3AccessKey != "" && s3SecretKey != "" {
+		s3Enabled = true
+	}
 }
 
 func main() {
+	// Initialize S3 if configured
+	if s3Enabled {
+		err := core.InitS3(core.S3Config{
+			Endpoint:  s3Endpoint,
+			Region:    s3Region,
+			Bucket:    s3Bucket,
+			AccessKey: s3AccessKey,
+			SecretKey: s3SecretKey,
+			Prefix:    s3Prefix,
+		})
+		if err != nil {
+			fmt.Printf("Failed to initialize S3: %v\n", err)
+		} else {
+			fmt.Println("S3 key browser enabled")
+		}
+	}
+
     server := gin.New()
     server.Use(gin.Recovery())
     server.SetTrustedProxies(nil)
@@ -99,6 +137,17 @@ func main() {
 		})
 		file.GET("/progress", func(c *gin.Context) {
 			controller.UploadProgressWs(c)
+		})
+	}
+
+	// --- S3 Routes ---
+	s3Group := server.Group("/s3")
+	{
+		s3Group.GET("/config", func(c *gin.Context) {
+			c.JSON(200, gin.H{"enabled": s3Enabled})
+		})
+		s3Group.GET("/list", func(c *gin.Context) {
+			c.JSON(200, controller.S3List(c))
 		})
 	}
 

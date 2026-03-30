@@ -54,6 +54,25 @@ func (sclient *SSHClient) GenerateClient() error {
 				return answers, nil
 			},
 		))
+	} else if sclient.LoginType == 2 {
+		// S3 密钥认证
+		if GlobalS3Manager == nil {
+			return fmt.Errorf("S3 is not configured")
+		}
+		keyContent, err := GlobalS3Manager.ReadObject(sclient.S3KeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read S3 key: %v", err)
+		}
+		var signer ssh.Signer
+		if sclient.Passphrase != "" {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase([]byte(keyContent), []byte(sclient.Passphrase))
+		} else {
+			signer, err = ssh.ParsePrivateKey([]byte(keyContent))
+		}
+		if err != nil {
+			return fmt.Errorf("failed to parse S3 private key: %v", err)
+		}
+		auth = append(auth, ssh.PublicKeys(signer))
 	} else {
 		var signer ssh.Signer
 		if sclient.Passphrase != "" {
