@@ -2,11 +2,11 @@
   <div class="login-container" :class="{ 'dark-theme': isDarkTheme }">
     <div class="theme-switch-wrapper">
       <div class="theme-switch" @click="toggleTheme">
-        <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'" style="margin-top: -30px;"></i>
+        <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
       </div>
     </div>
     <div class="card" style="margin: 20px auto;">
-      <div class="title">WebSSH Console</div>
+      <div class="title"><i class="fas fa-terminal"></i> WebSSH Console</div>
       <el-form :model="sshInfo" label-position="top" class="form-grid">
                  <el-row :gutter="20">
            <el-col :span="12">
@@ -84,10 +84,18 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row type="flex" justify="center" style="margin-top: 10px;">
-          <el-button type="danger" icon="el-icon-refresh" @click="onReset">重置输入</el-button>
-          <el-button type="primary" icon="el-icon-link" @click="onGenerateLink">生成链接</el-button>
-          <el-button type="success" @click="onConnect"><i class="fas fa-terminal" style="margin-right: 6px;"></i>连接SSH</el-button>
+        <el-row style="margin-top: 20px;">
+          <el-button type="success" class="connect-btn" @click="onConnect">
+            <i class="fas fa-terminal" style="margin-right: 8px;"></i>连接 SSH
+          </el-button>
+        </el-row>
+        <el-row type="flex" justify="space-between" style="margin-top: 15px;">
+          <el-button type="text" class="action-text-btn" style="color: var(--text-color);" @click="onReset">
+            <i class="el-icon-refresh"></i> 重置输入
+          </el-button>
+          <el-button type="text" class="action-text-btn" style="color: var(--primary);" @click="onGenerateLink">
+            <i class="el-icon-link"></i> 生成链接
+          </el-button>
         </el-row>
         <el-row v-if="generatedLink" style="margin-top: 18px;">
           <el-col :span="24">
@@ -468,15 +476,10 @@ export default {
   flex-direction: column;
   align-items: center;
   background: var(--bg-color);
-  background-image: var(--bg-image);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
   position: relative;
   padding-top: 5vh;
   padding-bottom: 60px;
-  transition: background-color 0.3s, color 0.3s, background-image 0.3s;
+  transition: background-color 0.3s, color 0.3s;
   overflow-y: auto;
 }
 
@@ -497,15 +500,18 @@ export default {
 
 .title {
   text-align: center;
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: var(--title-color);
   margin-bottom: 2.3rem;
   letter-spacing: 1px;
   position: relative;
   padding-bottom: 1rem;
-  font-family: none;
   transition: color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
 }
 
 .title::after {
@@ -535,6 +541,31 @@ export default {
   padding: 0.9rem 1rem;
   border-radius: 10px;
   transition: all 0.3s;
+}
+
+.connect-btn {
+  width: 100%;
+  font-size: 1.1rem !important;
+  padding: 12px 20px !important;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.connect-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.action-text-btn {
+  padding: 0 !important;
+  font-size: 0.9rem !important;
+  font-weight: normal !important;
+  opacity: 0.8;
+}
+
+.action-text-btn:hover {
+  opacity: 1;
+  background: transparent !important;
 }
 
 .login-container ::v-deep .el-form-item .el-upload.upload-key {
@@ -671,9 +702,8 @@ export default {
 
 .footer a {
   font-size: 0.9rem;
-  color: #000000;
   font-family: system-ui;
-  color: #fefefe;
+  color: var(--text-color);
   text-decoration: none;
   transition: color 0.3s;
 }
@@ -684,34 +714,44 @@ export default {
 
 .theme-switch-wrapper {
   position: absolute;
-  top: 25px;
+  top: 20px;
   right: 30px;
   z-index: 10;
 }
 
 .theme-switch {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s;
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow);
+}
+
+.theme-switch:hover {
+  transform: scale(1.1);
 }
 
 .theme-switch i {
-  margin-top: -20px;
   font-size: 20px;
   color: var(--icon-color);
   transition: color 0.3s;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1;
 }
 
 /* Light theme variables */
 .login-container {
-  --bg-color: #ffff;
-  --bg-image: url('/static/img/bg_light.webp');
-  --card-bg: hsl(0deg 0% 100% / 15%);
+  --bg-color: #f0f2f5;
+  --card-bg: hsl(0deg 0% 100% / 80%);
   --title-color: #1b58c9; /* Darker blue for title */
   --text-color: #3b3d3d;
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -727,8 +767,7 @@ export default {
 
 /* Dark theme variables */
 .login-container.dark-theme {
-  --bg-color: #ffffff;
-  --bg-image: url('/static/img/bg_dark.webp');
+  --bg-color: #1a1b1e;
   --card-bg: hsl(0deg 0% 100% / 5%);
   --title-color: #ffffff;
   --text-color: #e0e0e0;
