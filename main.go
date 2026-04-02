@@ -41,6 +41,9 @@ var (
 	s3SecretKey string
 	s3Prefix    string
 	s3Enabled   bool
+
+	// Admin password configuration
+	adminPassword string
 )
 
 func init() {
@@ -86,6 +89,9 @@ func init() {
 	if s3Endpoint != "" && s3Bucket != "" && s3AccessKey != "" && s3SecretKey != "" {
 		s3Enabled = true
 	}
+
+	// Admin password from environment variable
+	adminPassword = os.Getenv("ADMIN_PASSWORD")
 }
 
 func main() {
@@ -148,6 +154,28 @@ func main() {
 		})
 		s3Group.GET("/list", func(c *gin.Context) {
 			c.JSON(200, controller.S3List(c))
+		})
+	}
+
+	// --- Admin Routes ---
+	adminGroup := server.Group("/admin")
+	{
+		adminGroup.GET("/config", func(c *gin.Context) {
+			c.JSON(200, gin.H{"passwordRequired": adminPassword != ""})
+		})
+		adminGroup.POST("/verify", func(c *gin.Context) {
+			var req struct {
+				Password string `json:"password"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "invalid request"})
+				return
+			}
+			if adminPassword == "" || req.Password == adminPassword {
+				c.JSON(200, gin.H{"success": true})
+			} else {
+				c.JSON(401, gin.H{"error": "invalid password"})
+			}
 		})
 	}
 

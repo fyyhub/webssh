@@ -5,7 +5,33 @@
         <i class="fas" :class="isDarkTheme ? 'fa-sun' : 'fa-moon'"></i>
       </div>
     </div>
-    <div class="card" style="margin: 20px auto;">
+
+    <!-- Admin Password Gate -->
+    <div v-if="adminPasswordRequired && !adminVerified" class="card" style="margin: 20px auto; max-width: 400px;">
+      <div class="title"><i class="fas fa-lock"></i> 管理访问</div>
+      <el-form :model="{}" label-position="top">
+        <el-form-item label="管理员密码">
+          <el-input
+            v-model="adminPassword"
+            type="password"
+            placeholder="请输入管理员密码"
+            @keyup.enter.native="verifyAdminPassword"
+            show-password
+          />
+        </el-form-item>
+        <el-button
+          type="primary"
+          :loading="adminLoading"
+          @click="verifyAdminPassword"
+          style="width: 100%;"
+        >
+          验证
+        </el-button>
+      </el-form>
+    </div>
+
+    <!-- SSH Login Form -->
+    <div v-else class="card" style="margin: 20px auto;">
       <div class="title"><i class="fas fa-terminal"></i> WebSSH Console</div>
       <el-form :model="sshInfo" label-position="top" class="form-grid">
                  <el-row :gutter="20">
@@ -116,6 +142,7 @@
 
 <script>
 import { getS3Config } from '@/api/s3'
+import { getAdminConfig, verifyAdminPassword as verifyAdminPasswordApi } from '@/api/admin'
 import S3KeyBrowser from '@/components/S3KeyBrowser.vue'
 
 export default {
@@ -137,7 +164,12 @@ export default {
       s3Enabled: false,
       s3BrowserVisible: false,
       s3KeyPath: '',
-      keySource: 'upload'
+      keySource: 'upload',
+      // Admin password state
+      adminPasswordRequired: false,
+      adminVerified: false,
+      adminPassword: '',
+      adminLoading: false
     }
   },
   watch: {
@@ -149,6 +181,9 @@ export default {
     }
   },
   created() {
+    // 检查是否需要管理员密码验证
+    this.checkAdminConfig()
+
     // 检查 S3 是否可用
     getS3Config().then(res => {
       if (res && res.enabled) {
@@ -188,6 +223,54 @@ export default {
     document.head.appendChild(link)
   },
   methods: {
+    // 检查管理员密码配置
+    checkAdminConfig() {
+      // 检查 sessionStorage 是否已验证
+      if (sessionStorage.getItem('adminVerified') === 'true') {
+        this.adminVerified = true
+      }
+      
+      getAdminConfig().then(res => {
+        if (res && res.passwordRequired) {
+          this.adminPasswordRequired = true
+          // 如果已验证过，设置 adminVerified 为 true
+          if (sessionStorage.getItem('adminVerified') === 'true') {
+            this.adminVerified = true
+          }
+        } else {
+          this.adminPasswordRequired = false
+          this.adminVerified = true
+        }
+      }).catch(() => {
+        // 如果请求失败，不显示管理员密码验证
+        this.adminPasswordRequired = false
+        this.adminVerified = true
+      })
+    },
+    
+    // 验证管理员密码
+    verifyAdminPassword() {
+      if (!this.adminPassword) {
+        this.$message.error('请输入管理员密码')
+        return
+      }
+      
+      this.adminLoading = true
+      verifyAdminPasswordApi(this.adminPassword).then(res => {
+        this.adminLoading = false
+        if (res && res.success) {
+          this.adminVerified = true
+          sessionStorage.setItem('adminVerified', 'true')
+          this.$message.success('验证成功')
+        } else {
+          this.$message.error('密码错误')
+        }
+      }).catch(err => {
+        this.adminLoading = false
+        this.$message.error(err && err.error ? err.error : '验证失败')
+      })
+    },
+    
     onConnect () {
       // 清除之前的认证信息
       sessionStorage.removeItem('sshInfo')
